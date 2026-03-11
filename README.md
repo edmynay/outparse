@@ -26,10 +26,22 @@ Example:
 from outparse import PrintoutParser
 
 text = '''
+POINTS
+
 NAME   LOCATION   TYPE
-pointA 155, 25    n
+DotA   100, 88    p
 
 STATUS ACTIVE
+
+NAME   LOCATION   TYPE
+PointB 155, 25    p
+
+STATUS PASSIVE
+
+USERS
+
+Username       Email
+John Doe       john_doe@www.org
 '''
 
 parser = PrintoutParser(hor_param_names=["STATUS"])
@@ -39,21 +51,33 @@ result = parser.parse(text)
 Result:
 
 ```python
-    [
-        {
-            "NAME": ["pointA"],
-            "LOCATION": ["155", "25"],
-            "TYPE": ["n"],
-            "STATUS": ["ACTIVE"],
-            "object_id_param_name": "NAME"
-        }
-    ]
+[
+    {
+        'NAME': ['DotA'],
+        'LOCATION': ['100', '88'],
+        'TYPE': ['p'],
+        'STATUS': ['ACTIVE'],
+        'object_id_param_name': 'NAME'
+    },
+    {
+        'NAME': ['PointB'],
+        'LOCATION': ['155', '25'],
+        'TYPE': ['p'],
+        'STATUS': ['PASSIVE'],
+        'object_id_param_name': 'NAME'
+    },
+    {
+        'Username': ['John', 'Doe'],
+        'Email': ['john_doe@www.org'],
+        'object_id_param_name': 'Username'
+    }
+]
 ```
 
 
 What is a printout/text table?
 ------------------------------
-A printout  is a human-readable representation of tabular data
+A printout (aka text table) is a human-readable representation of tabular data
 where rows may span multiple lines, but column semantics remain consistent.
 
 Even when visually wrapped, such a printout can always be normalized
@@ -63,7 +87,7 @@ Wrapped form (printout):
 
 ```
     NAME   LOCATION   TYPE
-    pointA 155, 25    n
+    DotA   100, 88    p
 
     STATUS ACTIVE
 ```
@@ -72,7 +96,7 @@ Logical flat form (text table):
 
 ```
     NAME   LOCATION   TYPE   STATUS
-    pointA 155,25     n      ACTIVE
+    DotA   100, 88    p      ACTIVE
 ```
 
 
@@ -89,19 +113,19 @@ A parameter is a named field with one or more values.
 Vertical and Horizontal Parameters
 ----------------------------------
 Vertical parameters:
-    Values aligned under a header row.
+   Values aligned under a header row.
+    
+Example:
 
-    Example:
         X  Y
         10 15
 
 Horizontal parameters:
     Parameters whose name and value appear on the same line.
 
-    Example:
-    ```
-        STATUS ACTIVE
-    ```
+Example:
+    
+        NAME John Doe
 
 Horizontal parameters are NOT auto-detected and must be explicitly
 declared via hor_param_names.
@@ -150,6 +174,67 @@ Example:
 Child Objects (Advanced)
 ------------------------
 OutParse supports hierarchical parent–child relationships.
+
+Its used when one object (parent) contains one or more nested objects (childs).
+
+Example
+
+```
+    DEPARTMENTS
+
+        Department            Manager
+        Macrodata Refinement  Mark.S
+
+        Employee              Role
+        Mark.S                Refiner
+        Dylan.G               Refiner
+        Irving.B              Refiner
+        Helly.R               Refiner
+
+        Department            Manager
+        Optics & Design       Burt.G
+
+        Employee              Role
+        Burt.G                Designer
+        Felicia               Technician
+```
+
+Here we have two object types: Department (parent) and Employee (child), to parse it properly, this should be configured via object_relations: 
+
+```python
+parser = PrintoutParser(object_relations={'Department': ['Employee']})
+result = parser.parse(text)
+print(result)
+```
+
+Which results in
+
+```python
+[
+    {
+        'Department': ['Macrodata', 'Refinement'],
+        'Manager': ['Mark.S'],
+        'Employee': ['Mark.S', 'Dylan.G', 'Irving.B', 'Helly.R'],
+        'Role': [
+            ['Refiner'],
+            ['Refiner'],
+            ['Refiner'],
+            ['Refiner']
+        ],
+        'object_id_param_name': 'Department'
+    },
+    {
+        'Department': ['Optics', '&', 'Design'],
+        'Manager': ['Burt.G'],
+        'Employee': ['Burt.G', 'Felicia'],
+        'Role': [
+            ['Designer'],
+            ['Technician']
+        ],
+        'object_id_param_name': 'Department'
+    }
+]
+```
 
 Child parameters are stored as lists of lists,
 aligned by child identifier index.

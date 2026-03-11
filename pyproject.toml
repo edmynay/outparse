@@ -13,11 +13,19 @@ authors = [
 ]
 requires-python = ">=3.8"
 keywords = ["cli output", "printout", "text table", "parser"]
+
+
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: BSD License",
     "Operating System :: OS Independent"
 ]
+
+[project.urls]
+Homepage = "https://github.com/edmynay/outparse"
+Repository = "https://github.com/edmynay/outparse"
+Issues = "https://github.com/edmynay/outparse/issues"
+Documentation = "https://github.com/edmynay/outparse#readme"
 
 [tool.setuptools.packages.find]
 include = ["outparse*"]

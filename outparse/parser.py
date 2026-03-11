@@ -439,10 +439,12 @@ class PrintoutParser:
              param_name in self._object_id_param_names)):
 
             self._finalize_object()  # finalize current object, if any, because changing object id name means previous object completed
+
             self._id_param_name = param_name
-            logging.debug(f'Object identity detected according to user parameter object_id_param_names, self._idParamName={self._id_param_name}')
+            logging.debug(f'Object identity detected according to user parameter object_id_param_names, self._id_param_name={self._id_param_name}')
 
             self._child_ids = self._object_relations.get(self._id_param_name, [])  # to handle child objects model
+            logging.debug(f'self._child_ids={self._child_ids}')
 
         if param_name == self._id_param_name and param_values:        # Finalize object, if current parameter is non empty object id
 
