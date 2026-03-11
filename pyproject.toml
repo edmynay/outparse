@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "outparse"
+version = "1.0.0"
+description = "Outparse — configurable fast printout parser"
+readme = "README.md"
+license = {file = "LICENSE"}
+authors = [
+    {name = "edmynay"}
+]
+requires-python = ">=3.8"
+keywords = ["cli output", "printout", "text table", "parser"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: OS Independent"
+]
+
+[tool.setuptools.packages.find]
+include = ["outparse*"]
