@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "outparse"
-version = "1.0.1"
+version = "1.0.2"
 description = "OutParse — configurable fast printout/text table parser"
 readme = "README.md"
 license = {file = "LICENSE"}
@@ -12,7 +12,23 @@ authors = [
     {name = "edmynay"}
 ]
 requires-python = ">=3.8"
-keywords = ["cli output", "printout", "text table", "parser"]
+keywords = [
+    "parser",
+    "text parser",
+    "text table",
+    "printout parser",
+    "cli output",
+    "cli parser",
+    "structured text",
+    "table parser",
+    "log parser",
+    "terminal output",
+    "console output",
+    "network printout",
+    "telecom parser",
+    "text processing",
+    "data extraction"
+]
 
 
 classifiers = [
