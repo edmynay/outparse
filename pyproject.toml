@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "outparse"
-version = "1.0.0"
-description = "Outparse — configurable fast printout parser"
+version = "1.0.1"
+description = "OutParse — configurable fast printout/text table parser"
 readme = "README.md"
 license = {file = "LICENSE"}
 authors = [

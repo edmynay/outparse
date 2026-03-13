@@ -1,5 +1,5 @@
-OutParse — configurable fast printout (text table) parser
-=========================================================
+OutParse — configurable fast printout/text table parser
+=======================================================
 
 Overview
 --------
@@ -26,7 +26,7 @@ Example:
 from outparse import PrintoutParser
 
 text = '''
-POINTS
+POINTS DATA
 
 NAME   LOCATION   TYPE
 DotA   100, 88    p
@@ -34,11 +34,12 @@ DotA   100, 88    p
 STATUS ACTIVE
 
 NAME   LOCATION   TYPE
-PointB 155, 25    p
+PointB 155        p
+       200000
 
 STATUS PASSIVE
 
-USERS
+USER DATA
 
 Username       Email
 John Doe       john_doe@www.org
@@ -77,7 +78,7 @@ Result:
 
 What is a printout/text table?
 ------------------------------
-A printout (aka text table) is a human-readable representation of tabular data
+A printout/text table is a human-readable representation of tabular data
 where rows may span multiple lines, but column semantics remain consistent.
 
 Even when visually wrapped, such a printout can always be normalized
@@ -104,10 +105,11 @@ Parameters
 ----------
 A parameter is a named field with one or more values.
 
+ - Parameter names should not contain spaces
  - Values are always stored as lists.
  - Multiple values are separated by delimiters (spaces or commas by default.
  - Splitting behavior is configurable via value_delimiters.
- - Set value_delimiters=None or '' to disable splitting.
+ - Set value_delimiters='' to disable splitting.
 
 
 Vertical and Horizontal Parameters
@@ -149,33 +151,21 @@ If object_id_param_names is provided:
 
 Printout Logical Sections
 -------------------------
-A single non-empty line surrounded by empty lines starts a new section.
-Sections may contain a different object type.
+A section title is an optional single non-empty line used to group objects.
 
-When a new section starts:
- - the current object is finalized
- - identifier detection restarts (unless custom identifiers are specified)
+If present, it must be separated from previous content (if any) by an empty
+line and followed by an empty line before the section content.
 
-Example:
+Sections may introduce a different object type.
 
-```
-    POINTS
-
-        NAME   LOCATION   TYPE
-        pointA 155, 25    n
-
-    USER DATA
-
-        USERNAME   EMAIL
-        John       john@mail.com
-```
+In Quick Start chapter's Example there are two sections: POINTS DATA and USER DATA.
 
 
 Child Objects (Advanced)
 ------------------------
 OutParse supports hierarchical parent–child relationships.
 
-Its used when one object (parent) contains one or more nested objects (childs).
+It is used when one object (parent) contains one or more nested child objects.
 
 Example
 
@@ -186,7 +176,7 @@ Example
         Macrodata Refinement  Mark.S
 
         Employee              Role
-        Mark.S                Refiner
+        Mark.S                Refiner, Manager
         Dylan.G               Refiner
         Irving.B              Refiner
         Helly.R               Refiner
@@ -195,28 +185,28 @@ Example
         Optics & Design       Burt.G
 
         Employee              Role
-        Burt.G                Designer
+        Burt.G                Designer, Manager
         Felicia               Technician
 ```
 
-Here we have two object types: Department (parent) and Employee (child), to parse it properly, this should be configured via object_relations: 
+Here we have two object types: Department (parent) and Employee (child). To parse this hierarchy correctly, configure the relation via object_relations: 
 
 ```python
-parser = PrintoutParser(object_relations={'Department': ['Employee']})
+parser = PrintoutParser(object_relations={'Department': ['Employee']}, value_delimiters=',')
 result = parser.parse(text)
 print(result)
 ```
 
-Which results in
+Which results in:
 
 ```python
 [
     {
-        'Department': ['Macrodata', 'Refinement'],
+        'Department': ['Macrodata Refinement'],
         'Manager': ['Mark.S'],
         'Employee': ['Mark.S', 'Dylan.G', 'Irving.B', 'Helly.R'],
         'Role': [
-            ['Refiner'],
+            ['Refiner', 'Manager'],
             ['Refiner'],
             ['Refiner'],
             ['Refiner']
@@ -224,11 +214,11 @@ Which results in
         'object_id_param_name': 'Department'
     },
     {
-        'Department': ['Optics', '&', 'Design'],
+        'Department': ['Optics & Design'],
         'Manager': ['Burt.G'],
         'Employee': ['Burt.G', 'Felicia'],
         'Role': [
-            ['Designer'],
+            ['Designer', 'Manager'],
             ['Technician']
         ],
         'object_id_param_name': 'Department'
@@ -236,10 +226,31 @@ Which results in
 ]
 ```
 
-Child parameters are stored as lists of lists,
-aligned by child identifier index.
+Child parameters are stored as lists of lists and follow the same order as child object identifiers.
 
-Hierarchy is configured via object_relations:
+This means that each child parameter value can be accessed by the same index as the corresponding child object id.
+
+Example:
+
+```python
+employees = result[0]['Employee']
+roles = result[0]['Role']
+
+for i, employee in enumerate(employees):
+    role = ', '.join(roles[i])
+    print(f"Employee {employee} role is {role}")
+```
+
+Output:
+
+```python
+Employee Mark.S role is Refiner, Manager
+Employee Dylan.G role is Refiner
+Employee Irving.B role is Refiner
+Employee Helly.R role is Refiner
+```
+
+Hierarchy is configured via object_relations, for example:
 
 ```python
     {
@@ -305,14 +316,15 @@ Common Mistakes / Requirements
        NAME   LOCATION   TYPE
    ```
 
+
 3. Text must be space-formatted
+   Parsing relies on fixed column spacing.
 
-   Parsing relies on column positioning.
-   If text is tab-formatted, replace tabs with spaces before parsing:
+   If parameter names contain spaces, replace them (e.g. with underscores).
 
-   ```
-       text_for_parsing = text.replace('\t', 4 * ' ')
-   ```
+   Tab characters are automatically normalized before parsing using the
+   configured `tab_size` (default: 4), so tab-formatted input is converted
+   to space-aligned text internally.
 
 ## License
 

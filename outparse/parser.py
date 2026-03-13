@@ -1,12 +1,12 @@
 """
-Outparse — configurable fast printout parser.
+OutParse — configurable fast printout/text table parser
 
 This module provides the `PrintoutParser` class which converts human-readable
 CLI printouts into structured Python data.
 
 Features
 --------
-- Parses line-wrapped tables
+- Parses line-wrapped cli outputs (printouts, text tables)
 - Supports horizontal key–value parameters
 - Supports parent/child hierarchical objects
 - Works without external dependencies
@@ -30,6 +30,7 @@ import re
 
 
 ID_PARAM_KEY = 'object_id_param_name'  # name of the key holding object id
+SECTION_KEY = 'section_name'  # name of the key holding section name
 COLUMN_SEPARATOR_SPACES_COUNT = 1  # Number of spaces separating columns
 
 
@@ -40,7 +41,8 @@ class PrintoutParser:
                  object_id_param_names=[],
                  hor_param_names=[],
                  value_delimiters='\\s|,',
-                 keep_order=False):
+                 keep_order=False,
+                 tab_size=4):
 
         """
         :param object_relations:
@@ -78,6 +80,13 @@ class PrintoutParser:
         using OrderedDict (slightly slower).
         If False, uses regular dict for better performance.
         Default: False.
+
+        :param tab_size:
+        Number of spaces used to replace each tab character (`\t`) in the input printout
+        before parsing.
+        The parser relies on fixed spacing to detect column boundaries, therefore
+        all tab characters are normalized to spaces during preprocessing.
+        Default: 4.
         """
 
         logging.debug('Call PrintoutParser init')
@@ -95,9 +104,11 @@ class PrintoutParser:
         self._hor_param_names = hor_param_names
 
         self._keep_order = keep_order
+        self._tab_size = tab_size
 
         # ********************************** INSTANCE VARIABLES **********************************
         self._id_param_name = None  # Name of current object identifier
+        self._section_name = None  # Current section name
 
         self._param_parse_map = {}    # Structure for storing parameters parse index boundaries (parse map)
 
@@ -273,7 +284,7 @@ class PrintoutParser:
         if self._cur_obj:
             # if any data collected, save generic keys and append object to result list
             self._cur_obj[ID_PARAM_KEY] = self._id_param_name  # save object id parameter name with fixed key
-
+            self._cur_obj[SECTION_KEY] = self._section_name  # store current logical section
             self._result_object_list.append(self._cur_obj)  # append object data to result object list
 
             # Clear data
@@ -771,7 +782,7 @@ class PrintoutParser:
         iterates over sequence of lines - the result of its splitlines() call on printout.
         """
         logging.debug(f'parse() started')
-        text_lines = [l.strip() for l in text.splitlines()]
+        text_lines = [l.rstrip().replace('\t', self._tab_size * ' ') for l in text.splitlines()]  # normalize printout's spacing
         logging.debug(f'text_lines:\n{text_lines}')
 
         cur_header_line = ''  # cur_header_line should not initially be equal to prev_line
@@ -813,7 +824,8 @@ class PrintoutParser:
                         # it is threaded as new printout section,
                         # which in turn is handled as new printout
 
-                        logging.debug(f'Section found: {line}')
+                        self._section_name = line
+                        logging.debug(f'Section found: {self._section_name}')
 
                         if not self._object_id_param_names:  # if id parameter name not specified by user,
                             self._finalize_object()          # save current object
