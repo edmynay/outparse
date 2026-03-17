@@ -13,7 +13,7 @@
   - [Printout Logical Sections](#printout-logical-sections)
 - [Parser Configuration Parameters](#parser-configuration-parameters)
 - [Basic Output Format](#basic-output-format)
-- [Common Requirement Mistakes](#common-requirement-mistakes)
+- [Common Requirement Violations](#common-requirement-violations)
 - [License](#license)
 
 
@@ -59,11 +59,11 @@ STATUS PASSIVE
 
 USER DATA
 
-Username       Email
+User name      User Email
 John Doe       john_doe@www.org
 '''
 
-parser = PrintoutParser(hor_param_names=["STATUS"])
+parser = PrintoutParser(hor_param_names=["STATUS"], param_schema={'User name':str, 'User Email':str, 'LOCATION': int})
 result = parser.parse(text)
 ```
 
@@ -73,7 +73,7 @@ Result:
 [
     {
         'NAME': ['DotA'],
-        'LOCATION': ['100', '88'],
+        'LOCATION': [100, 88],
         'TYPE': ['p'],
         'STATUS': ['ACTIVE'],
         'object_id_param_name': 'NAME',
@@ -81,16 +81,16 @@ Result:
     },
     {
         'NAME': ['PointB'],
-        'LOCATION': ['155', '200000'],
+        'LOCATION': [155, 200000],
         'TYPE': ['p'],
         'STATUS': ['PASSIVE'],
         'object_id_param_name': 'NAME',
-        'section_name': 'POINTS DATA'
+        'section_name': 'USER DATA'
     },
     {
-        'Username': ['John', 'Doe'],
-        'Email': ['john_doe@www.org'],
-        'object_id_param_name': 'Username',
+        'User name': ['John', 'Doe'],
+        'User Email': ['john_doe@www.org'],
+        'object_id_param_name': 'User name',
         'section_name': 'USER DATA'
     }
 ]
@@ -330,7 +330,7 @@ Regular expression used to split parameter values.
 
 Default: `"\\s|,"` (split by whitespace or comma).
 
-Set to `None` or `""` to disable splitting (values will be stored as
+Set to `""` to disable splitting (values will be stored as
 single-item lists).
 
 ### hor_param_names
@@ -358,6 +358,30 @@ all tab characters are normalized to spaces during preprocessing.
 
 Default: `4`
 
+### param_schema
+Optional mapping of parameter names to Python types used to convert parsed
+parameter values.
+
+Example:
+
+```python
+{
+    "User name": str,
+    "LOCATION": int,
+    "PRICE": float
+}
+```
+
+If a parameter name is present in `param_schema`, each of its parsed values
+is converted using the corresponding type before being stored in the result.
+
+Parameters not listed in `param_schema` remain strings.
+
+This schema also allows multi‑word parameter names (for example `"User name"`)
+to be recognized correctly during header parsing.
+
+Default: `{}`
+
 
 <a id="basic-output-format"></a>
 ## Basic Output Format
@@ -378,8 +402,8 @@ list corresponds to the values of a particular child object (index-aligned
 with the child identifier list, see [Child Objects (Advanced)](#child-objects-advanced)).
 
 
-<a id="common-requirement-mistakes"></a>
-## Common Requirement Mistakes
+<a id="common-requirement-violations"></a>
+## Common Requirement Violations
 
 1. Header line must be separated from previous content (if any) by an empty line
 
@@ -419,10 +443,10 @@ with the child identifier list, see [Child Objects (Advanced)](#child-objects-ad
    ```
 
 
-3. Text must be space-formatted
-   Parsing relies on fixed column spacing.
+3. Text must be space-formatted since parsing relies on fixed column spacing.
 
-   If parameter names contain spaces, replace them (e.g. with underscores).
+   Multi-word parameter names are supported, but they must be declared in
+   `param_schema` so the parser can recognize them correctly during header parsing.
 
    Tab characters are automatically normalized before parsing using the
    configured `tab_size` (default: 4), so tab-formatted input is converted

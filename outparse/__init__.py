@@ -1,5 +1,5 @@
 """
-Tabser — configurable fast text table (printout) parser.
+OutParse — configurable fast printout/text table parser
 """
 
 from .parser import PrintoutParser

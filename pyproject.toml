@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "outparse"
-version = "1.0.2"
+version = "1.0.3"
 description = "OutParse — configurable fast printout/text table parser"
 readme = "README.md"
 license = {file = "LICENSE"}
@@ -13,6 +13,7 @@ authors = [
 ]
 requires-python = ">=3.8"
 keywords = [
+    "parse",
     "parser",
     "text parser",
     "text table",
@@ -21,11 +22,11 @@ keywords = [
     "cli parser",
     "structured text",
     "table parser",
-    "log parser",
     "terminal output",
     "console output",
     "network printout",
     "telecom parser",
+    "telecom printout",
     "text processing",
     "data extraction"
 ]
@@ -42,6 +43,7 @@ Homepage = "https://github.com/edmynay/outparse"
 Repository = "https://github.com/edmynay/outparse"
 Issues = "https://github.com/edmynay/outparse/issues"
 Documentation = "https://github.com/edmynay/outparse#readme"
+Author = "https://www.linkedin.com/in/dmytro-naichuk/"
 
 [tool.setuptools.packages.find]
 include = ["outparse*"]

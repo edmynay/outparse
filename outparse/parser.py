@@ -42,7 +42,8 @@ class PrintoutParser:
                  hor_param_names=[],
                  value_delimiters='\\s|,',
                  keep_order=False,
-                 tab_size=4):
+                 tab_size=4,
+                 param_schema={}):
 
         """
         :param object_relations:
@@ -67,7 +68,7 @@ class PrintoutParser:
         :param value_delimiters:
         Regular expression used to split parameter values.
         Default: '\\s|,' (split by whitespace or comma).
-        Set to None or '' to disable splitting (values stored as single-item lists).
+        Set to '' to disable splitting (values stored as single-item lists).
 
         :param hor_param_names:
         List of horizontal parameter names.
@@ -87,6 +88,26 @@ class PrintoutParser:
         The parser relies on fixed spacing to detect column boundaries, therefore
         all tab characters are normalized to spaces during preprocessing.
         Default: 4.
+
+        :param param_schema:
+        Optional mapping of parameter names to Python types used to convert parsed
+        parameter values.
+
+        Example:
+            {
+                "User name": str,
+                "LOCATION": int,
+                "PRICE": float
+            }
+
+        If a parameter name is present in param_schema, each of its parsed values
+        is converted using the corresponding type before being saved to the result.
+        Parameters not present in param_schema are kept as strings.
+
+        This schema also allows multi-word parameter names to be recognized during
+        header parsing.
+
+        Default: {}.
         """
 
         logging.debug('Call PrintoutParser init')
@@ -105,6 +126,7 @@ class PrintoutParser:
 
         self._keep_order = keep_order
         self._tab_size = tab_size
+        self._param_schema = param_schema
 
         # ********************************** INSTANCE VARIABLES **********************************
         self._id_param_name = None  # Name of current object identifier
@@ -307,6 +329,13 @@ class PrintoutParser:
         This function saves given parameter into current result object dictionary.
         """
         logging.debug(f'\nCall _save_param{(param_name, param_values, save_as_list_of_lists)}')
+
+        try:  # cast parameter values to requested type, if provided
+            param_values = [self._param_schema[param_name](v) for v in param_values]
+            logging.debug(f'Converted parameter values of "{param_name}" to {self._param_schema[param_name].__name__}')
+        except KeyError:
+            pass
+
         try:
             # empty (phantom) current child id value or same as saved for child parameter means no new child object
             self._is_new_child_started = (self._cur_child_id
@@ -452,7 +481,7 @@ class PrintoutParser:
             self._finalize_object()  # finalize current object, if any, because changing object id name means previous object completed
 
             self._id_param_name = param_name
-            logging.debug(f'Object identity detected according to user parameter object_id_param_names, self._id_param_name={self._id_param_name}')
+            logging.debug(f'Object identity detected, self._id_param_name={self._id_param_name}')
 
             self._child_ids = self._object_relations.get(self._id_param_name, [])  # to handle child objects model
             logging.debug(f'self._child_ids={self._child_ids}')
@@ -560,7 +589,15 @@ class PrintoutParser:
             param_val_search_start_positions = []
             param_val_search_end_positions = []
 
-            param_names = header_line.split()
+            if self._param_schema:  # If provided, using parameter names from param_schema for splitting header line
+                pattern = r"(" + "|".join(
+                    rf"\b{re.escape(t)}\b" for t in sorted(self._param_schema.keys(), key=len, reverse=True)
+                ) + r")|\s+"
+
+                param_names = [p for p in re.split(pattern, header_line) if p and not p.isspace()]
+            else:
+                param_names = header_line.split()  # default splitting parameter names by spaces
+
             logging.debug(f'param_names={param_names}')
 
             for i in range(len(param_names)):  # Iterating over parameter names from lef to the right
@@ -573,10 +610,10 @@ class PrintoutParser:
 
                 # Search with Start and End positions to avoid collisions during search and for speed up
                 cur_param_name_start_pos = header_line.index(param_name, left_param_name_end_pos + COLUMN_SEPARATOR_SPACES_COUNT)
-                logging.debug(f'curParamNameStartPos={cur_param_name_start_pos}')
+                logging.debug(f'cur_param_name_start_pos={cur_param_name_start_pos}')
 
                 cur_param_name_end_pos = cur_param_name_start_pos + len(param_name)  # Calculate position of header's last character
-                logging.debug(f'curParamNameEndPos={cur_param_name_end_pos}')
+                logging.debug(f'cur_param_name_end_pos={cur_param_name_end_pos}')
 
                 cur_param_val_search_start_pos = left_param_val_search_end_pos
                 logging.debug(f'cur_param_val_search_start_pos={cur_param_val_search_start_pos}')
