@@ -49,13 +49,13 @@ POINTS DATA
 NAME   LOCATION   TYPE
 DotA   100, 88    p
 
-STATUS ACTIVE
+POINT STATUS ACTIVE
 
 NAME   LOCATION   TYPE
 PointB 155        p
        200000
 
-STATUS PASSIVE
+POINT STATUS PASSIVE
 
 USER DATA
 
@@ -63,7 +63,7 @@ User name      User Email
 John Doe       john_doe@www.org
 '''
 
-parser = PrintoutParser(hor_param_names=["STATUS"], param_schema={'User name':str, 'User Email':str, 'LOCATION': int})
+parser = PrintoutParser(hor_param_names=["POINT STATUS"], param_schema={'POINT STATUS':str, 'User name':str, 'User Email':str, 'LOCATION': int})
 result = parser.parse(text)
 ```
 
@@ -75,7 +75,7 @@ Result:
         'NAME': ['DotA'],
         'LOCATION': [100, 88],
         'TYPE': ['p'],
-        'STATUS': ['ACTIVE'],
+        'POINT STATUS': ['ACTIVE'],
         'object_id_param_name': 'NAME',
         'section_name': 'POINTS DATA'
     },
@@ -83,7 +83,7 @@ Result:
         'NAME': ['PointB'],
         'LOCATION': [155, 200000],
         'TYPE': ['p'],
-        'STATUS': ['PASSIVE'],
+        'POINT STATUS': ['PASSIVE'],
         'object_id_param_name': 'NAME',
         'section_name': 'USER DATA'
     },

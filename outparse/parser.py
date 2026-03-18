@@ -154,7 +154,22 @@ class PrintoutParser:
         self._result_object_list = []    # Result objects list
 
 
-    def _split_values_line_to_list(self, value_line):
+    def _split_header_line(self, header_line):
+        """
+        This function splits line with parameter headers using provided param_schema
+        """
+        if self._param_schema:  # If provided, using parameter names from param_schema for splitting header line
+            pattern = r"(" + "|".join(
+                rf"\b{re.escape(t)}\b" for t in sorted(self._param_schema.keys(), key=len, reverse=True)
+            ) + r")|\s+"
+
+            param_names = [p for p in re.split(pattern, header_line) if p and not p.isspace()]
+        else:
+            param_names = header_line.split()  # default splitting parameter names by spaces
+        return param_names
+
+
+    def _split_values(self, value_line):
         """
         This function splits value line to list of tokens, depending on delimiters parser option.
         """
@@ -176,23 +191,23 @@ class PrintoutParser:
         return param_values_list
 
 
-    def _is_param_l_justified(self, param_name, param_name_start_pos, param_name_end_pos, right_search_border, text_table_lines, curr_line_number):
+    def _is_param_l_aligned(self, param_name, param_name_start_pos, param_name_end_pos, right_search_border, text_table_lines, curr_line_number):
 
         """
-        This internal  function checks if parameter value is left justified (normal case) to its header.
+        This internal  function checks if parameter value is left aligned (normal case) to its header.
         """
 
-        logging.debug(f'Call _is_param_l_justified with {(param_name, param_name_start_pos, param_name_end_pos, right_search_border, '...')}')
+        logging.debug(f'Call _is_param_l_aligned with {(param_name, param_name_start_pos, param_name_end_pos, right_search_border, '...')}')
 
-        # Flags storing parameter L- or R -justified (default is left justified)
+        # Flags storing parameter L- or R -aligned (default is left aligned)
 
         # for current line
-        flag_cur_param_l_justified = None
-        flag_cur_param_r_justified = None
+        is_cur_param_l_aligned = None
+        is_cur_param_r_aligned = None
 
         # accumulated attributes
-        are_all_vals_l_justified = None
-        are_all_vals_r_justified = None
+        are_all_values_l_aligned = None
+        are_all_values_r_aligned = None
 
         # Combination of those initial values of isLinePossiblyParamRelated and prev_line will allow first line analysis
         is_line_possibly_param_related = True  # Flag shows that current line related to current parameter's value
@@ -221,76 +236,76 @@ class PrintoutParser:
 
 
             if is_line_possibly_param_related and cur_line[param_name_start_pos:right_search_border].strip():  # omit cases with no value, its causing fake statistics
-                # Check if parameter value is left justified to its header
+                # Check if parameter value is left aligned to its header
                 try:
-                    flag_cur_param_l_justified = cur_line[param_name_start_pos] != ' '
+                    is_cur_param_l_aligned = cur_line[param_name_start_pos] != ' '
                     if param_name_start_pos > 0:
-                        flag_cur_param_l_justified = flag_cur_param_l_justified and cur_line[param_name_start_pos - 1] == ' '
+                        is_cur_param_l_aligned = is_cur_param_l_aligned and cur_line[param_name_start_pos - 1] == ' '
 
-                    logging.debug(f'flag_cur_param_l_justified={flag_cur_param_l_justified}')
+                    logging.debug(f'is_cur_param_l_aligned={is_cur_param_l_aligned}')
 
                 except IndexError:
 
                     # current values line is too short and therefore does not contain parameter being analyzed
                     # Switching to next line
-                    logging.debug(f'IndexError while checking is_param_l_justified, analyzing next line')
+                    logging.debug(f'IndexError while checking is_param_l_aligned, analyzing next line')
                     prev_line = cur_line  # save previous line for next iteration
                     logging.debug(f'prev_line is changed to: {prev_line}')
                     continue
 
-                # Detect if parameter value is right justified to its header
+                # Detect if parameter value is right aligned to its header
                 try:
-                    flag_cur_param_r_justified = cur_line[param_name_end_pos - 1] != ' '
+                    is_cur_param_r_aligned = cur_line[param_name_end_pos - 1] != ' '
                     try:
-                        flag_cur_param_r_justified = flag_cur_param_r_justified and cur_line[param_name_end_pos] == ' '
-                    except IndexError:  # Possibly right justified parameter due to right border is end of line
-                        logging.debug('IndexError when checking is_param_r_justified, assuming it is possibly right justified due to end of the line')
+                        is_cur_param_r_aligned = is_cur_param_r_aligned and cur_line[param_name_end_pos] == ' '
+                    except IndexError:  # Possibly right aligned parameter due to right border is end of line
+                        logging.debug('IndexError when checking is_param_r_aligned, assuming it is possibly right aligned due to end of the line')
                 except IndexError:
                     # Means corresponding right part is unreachable due to line is too short.
-                    # But it's ok since parameter value may be left justified and saved a bit left.
-                    # Also means that parameter can't be right justified.
-                    flag_cur_param_r_justified = False
-                    logging.debug('IndexError when checking is_param_r_justified, so it was set to False')
+                    # But it's ok since parameter value may be left aligned and saved a bit left.
+                    # Also means that parameter can't be right aligned.
+                    is_cur_param_r_aligned = False
+                    logging.debug('IndexError when checking is_param_r_aligned, so it was set to False')
 
-                logging.debug(f'is_param_r_justified={flag_cur_param_r_justified}')
+                logging.debug(f'is_param_r_aligned={is_cur_param_r_aligned}')
 
                 # Flags can be valid when they are different
-                # but we can trust this method only if left justification detected
-                if flag_cur_param_l_justified and not flag_cur_param_r_justified:
+                # but we can trust this method only if left alignment detected
+                if is_cur_param_l_aligned and not is_cur_param_r_aligned:
 
-                    logging.debug(f'Different justification modes detected, returning {flag_cur_param_l_justified}')
-                    return flag_cur_param_l_justified
+                    logging.debug(f'Different alignment modes detected, returning {is_cur_param_l_aligned}')
+                    return is_cur_param_l_aligned
 
                 # Evaluating common attributes
-                if are_all_vals_l_justified == None:
-                    are_all_vals_l_justified = flag_cur_param_l_justified
+                if are_all_values_l_aligned == None:
+                    are_all_values_l_aligned = is_cur_param_l_aligned
                 else:
-                    are_all_vals_l_justified = are_all_vals_l_justified and flag_cur_param_l_justified
+                    are_all_values_l_aligned = are_all_values_l_aligned and is_cur_param_l_aligned
 
-                logging.debug(f'are_all_vals_l_justified={are_all_vals_l_justified}')
+                logging.debug(f'are_all_values_l_aligned={are_all_values_l_aligned}')
 
-                if are_all_vals_r_justified == None:
-                    are_all_vals_r_justified = flag_cur_param_r_justified
+                if are_all_values_r_aligned == None:
+                    are_all_values_r_aligned = is_cur_param_r_aligned
                 else:
-                    are_all_vals_r_justified = are_all_vals_r_justified and flag_cur_param_r_justified
+                    are_all_values_r_aligned = are_all_values_r_aligned and is_cur_param_r_aligned
 
-                logging.debug(f'are_all_vals_r_justified={are_all_vals_r_justified}')
+                logging.debug(f'are_all_values_r_aligned={are_all_values_r_aligned}')
 
             prev_line = cur_line  # save previous line for next iteration
 
             logging.debug(f'prev_line is changed to: {prev_line}')
 
-        # Basing on its truth table, final result is a reverse implication (A or not B) of accumulated attributes:
+        # Basing on the truth table, result is a reverse implication (A or not B) of accumulated attributes:
+        # +------------------+-------------------+--------+-------------------------------------------------------------------------------------------------+
+        # | All left aligned | All right aligned | Result | Meaning                                                                                         |
+        # +------------------+-------------------+--------+------------------------------------------------------------------------------------------------_+
+        # | No               | No                | Yes    | Uncertainity - no values or values shifted from its header, assume default alignment - left |
+        # | No               | Yes               | No     | Certainly - right alignment                                                                 |
+        # | Yes              | No                | Yes    | Certainly - left alignment                                                                  |
+        # | Yes              | Yes               | Yes    | Uncertainity - all values directly under header, assume default alignment - left            |
         # +--------------------+---------------------+--------+-------------------------------------------------------------------------------------------------+
-        # | All left justified | All right justified | Result | Meaning                                                                                         |
-        # +--------------------+---------------------+--------+------------------------------------------------------------------------------------------------_+
-        # | No                 | No                  | Yes    | Uncertainity - no values or values shifted from its header, assume default justification - left |
-        # | No                 | Yes                 | No     | Certainly - right justification                                                                 |
-        # | Yes                | No                  | Yes    | Certainly - left justification                                                                  |
-        # | Yes                | Yes                 | Yes    | Uncertainity - all values directly under header, assume default justification - left            |
-        # +--------------------+---------------------+--------+-------------------------------------------------------------------------------------------------+
-        res = are_all_vals_l_justified or not are_all_vals_r_justified
-        logging.debug(f'Finish _is_param_l_justified(), returning final result: {res}')
+        res = are_all_values_l_aligned or not are_all_values_r_aligned
+        logging.debug(f'Finish _is_param_l_aligned(), returning final result: {res}')
         return res
 
 
@@ -565,16 +580,16 @@ class PrintoutParser:
 
         param_names = []  # List of parameter headers in current headerline
 
-        # Parameter's justification
-        is_cur_param_l_justified = None
-        is_right_param_l_justified = None
+        # Parameter's alignment
+        is_cur_param_l_aligned = None
+        is_right_param_l_aligned = None
 
         param_values = []  # List with current parameter values
 
         try:  # if header line found it means it was already parsed, so reusing its parse map
             for param_name, cur_param_val_search_start_pos, cur_param_val_search_end_pos in self._param_parse_map[header_line]:
                 logging.debug(f'Analyzing parameter {param_name} by saved map: {(cur_param_val_search_start_pos, cur_param_val_search_end_pos)}')
-                param_values = self._split_values_line_to_list(value_line[cur_param_val_search_start_pos:cur_param_val_search_end_pos])
+                param_values = self._split_values(value_line[cur_param_val_search_start_pos:cur_param_val_search_end_pos])
                 logging.debug(f'param_values={param_values}')
                 self._handle_param(param_name, param_values)
 
@@ -589,15 +604,7 @@ class PrintoutParser:
             param_val_search_start_positions = []
             param_val_search_end_positions = []
 
-            if self._param_schema:  # If provided, using parameter names from param_schema for splitting header line
-                pattern = r"(" + "|".join(
-                    rf"\b{re.escape(t)}\b" for t in sorted(self._param_schema.keys(), key=len, reverse=True)
-                ) + r")|\s+"
-
-                param_names = [p for p in re.split(pattern, header_line) if p and not p.isspace()]
-            else:
-                param_names = header_line.split()  # default splitting parameter names by spaces
-
+            param_names = self._split_header_line(header_line)
             logging.debug(f'param_names={param_names}')
 
             for i in range(len(param_names)):  # Iterating over parameter names from lef to the right
@@ -632,51 +639,51 @@ class PrintoutParser:
                     right_param_name = None
                     right_param_name_start_pos = None
 
-                # Check if parameter value is right justified to its header
-                if is_right_param_l_justified == None:       # if value is not valid
+                # Check if parameter value is right aligned to its header
+                if is_right_param_l_aligned == None:       # if value is not valid
                     # Calculate property, if not previously saved
-                    is_cur_param_l_justified = self._is_param_l_justified(param_name,
-                                                                          cur_param_name_start_pos,
-                                                                          cur_param_name_end_pos,
-                                                                          right_param_name_start_pos,
-                                                                          all_lines,
-                                                                          curr_line_no)
-                    logging.debug(f'Calculated is_cur_param_l_justified for parameter {param_name}')
+                    is_cur_param_l_aligned = self._is_param_l_aligned(param_name,
+                                                                      cur_param_name_start_pos,
+                                                                      cur_param_name_end_pos,
+                                                                      right_param_name_start_pos,
+                                                                      all_lines,
+                                                                      curr_line_no)
+                    logging.debug(f'Calculated is_cur_param_l_aligned for parameter {param_name}')
                 else:
                     # Reuse property collected on previous iteration
-                    is_cur_param_l_justified = is_right_param_l_justified
-                    logging.debug(f'Reused parameter is_cur_param_l_justified=is_right_param_l_justified={is_cur_param_l_justified} for parameter {param_name}')
+                    is_cur_param_l_aligned = is_right_param_l_aligned
+                    logging.debug(f'Reused parameter is_cur_param_l_aligned=is_right_param_l_aligned={is_cur_param_l_aligned} for parameter {param_name}')
 
-                if is_cur_param_l_justified:
+                if is_cur_param_l_aligned:
 
-                    logging.debug(f'Parameter {param_name} is left justified')
+                    logging.debug(f'Parameter {param_name} is left aligned')
 
                     # to find end values position, next parameter adjustment check required
                     if right_param_name:
                         logging.debug(f'right_param_name={right_param_name}')
 
                         # Detecting characteristics of next right parameter
-                        # for is_param_l_justified method
+                        # for is_param_l_aligned method
                         try:
                             right_right_param_name_start_pos = header_line.index(param_names[i + 2],  # right-right parameter name
                                                                                  right_param_name_end_pos + COLUMN_SEPARATOR_SPACES_COUNT)
                         except IndexError:
                             right_right_param_name_start_pos = None
 
-                        is_right_param_l_justified = self._is_param_l_justified(right_param_name,
-                                                                                right_param_name_start_pos,
-                                                                                right_param_name_end_pos,
-                                                                                right_right_param_name_start_pos,
-                                                                                all_lines,
-                                                                                curr_line_no)
+                        is_right_param_l_aligned = self._is_param_l_aligned(right_param_name,
+                                                                            right_param_name_start_pos,
+                                                                            right_param_name_end_pos,
+                                                                            right_right_param_name_start_pos,
+                                                                            all_lines,
+                                                                            curr_line_no)
 
-                        logging.debug(f'is_right_param_l_justified={is_right_param_l_justified}')
+                        logging.debug(f'is_right_param_l_aligned={is_right_param_l_aligned}')
 
-                        if is_right_param_l_justified:
-                            # in case next right parameter from current one is also left justified,
+                        if is_right_param_l_aligned:
+                            # in case next right parameter from current one is also left aligned,
                             # take cur_param_val_search_end_pos as right_param_name_start_pos bcoz parameter value may be limited by right side parameter
                             cur_param_val_search_end_pos = right_param_name_start_pos
-                            logging.debug(f'Right parameter is left justified, cur_param_val_search_end_pos={cur_param_val_search_end_pos}')
+                            logging.debug(f'Right parameter is left aligned, cur_param_val_search_end_pos={cur_param_val_search_end_pos}')
                         else:
                             # In case of adjustment change, its unknown where current parameter values end and where next parameter's values begin,
                             # So rest of the lines containing corresponding parameters values are scanned,
@@ -734,25 +741,25 @@ class PrintoutParser:
 
                             # end = max right margin
                             cur_param_val_search_end_pos = cur_param_val_max_end_pos
-                            logging.debug(f'Search due to changed justification found\ncur_param_val_search_end_pos={cur_param_val_search_end_pos}')
+                            logging.debug(f'Search due to changed alignment found\ncur_param_val_search_end_pos={cur_param_val_search_end_pos}')
 
                     else:  # Means no next (right) parameter
                         cur_param_val_search_end_pos = None
                         logging.debug(f'No next (right) parameter,\n'
                                       'cur_param_val_search_end_pos={cur_param_val_search_end_pos}')
 
-                else:  # Parameter is right justified
-                    logging.debug(f'Parameter {param_name} is right justified')
+                else:  # Parameter is right aligned
+                    logging.debug(f'Parameter {param_name} is right aligned')
                     cur_param_val_search_end_pos = cur_param_name_end_pos  # end is cur_param_name_end_pos
                     logging.debug(f'cur_param_val_search_end_pos={cur_param_val_search_end_pos}')
-                    is_right_param_l_justified = None  # marking value as not valid, so it will be recalculated on next iterations, if needed
+                    is_right_param_l_aligned = None  # marking value as not valid, so it will be recalculated on next iterations, if needed
 
                 # ************ END CALCULATING cur_param_val_search_end_pos ************
 
 
                 logging.debug(f'Taking values in range {cur_param_val_search_start_pos}:{cur_param_val_search_end_pos}')
 
-                param_values = self._split_values_line_to_list(value_line[cur_param_val_search_start_pos:cur_param_val_search_end_pos])
+                param_values = self._split_values(value_line[cur_param_val_search_start_pos:cur_param_val_search_end_pos])
                 logging.debug(f'param_values={param_values}')
 
                 self._handle_param(param_name, param_values)
@@ -772,19 +779,17 @@ class PrintoutParser:
         self._save_line_params()
 
 
-    def _parse_horizontal_line(self, line):
+    def _parse_hor_param_line(self, line):
         """
         This function parses horizontal parameters
         (defined by parser parameter hor_param_names)
         """
 
-        logging.debug(f'Call _parse_horizontal_line{(line,)}')
+        logging.debug(f'Call _parse_hor_param_line{(line,)}')
         logging.debug(f'self._cur_obj={self._cur_obj}')
         logging.debug(f'self._hor_param_names={self._hor_param_names}')
 
-        # Initially just split by spaces
-        tokens = self._split_values_line_to_list(line)
-
+        tokens = self._split_header_line(line)  # split line with horizontal parameters to list of tokens; its format is ["hor_param_name1", "unsplitted_hor_param_values", "hor_param_name2", ...]
         logging.debug(f'tokens={tokens}')
 
         param_name = None
@@ -801,7 +806,7 @@ class PrintoutParser:
                 param_name = token
                 param_values = []
             else:
-                param_values.extend(self._split_values_line_to_list(token))
+                param_values.extend(self._split_values(token))
 
         # save last parameter, as it cannot be handled in above loop
         self._handle_param(param_name, param_values)
@@ -809,7 +814,7 @@ class PrintoutParser:
         # save parameters in line buffer, if any
         self._save_line_params()
 
-        logging.debug('Finished _parse_horizontal_line()')
+        logging.debug('Finished _parse_hor_param_line()')
         logging.debug(f'self._cur_obj={self._cur_obj}')
 
 
@@ -847,9 +852,9 @@ class PrintoutParser:
             if line or prev_line == cur_header_line:  # do not handle empty line if previous one is not current header line
                                                       # since empty line should only be handled in case it is value line,
                                                       # meaning previous line should be current header line
-                if bool(set(re.split(self._value_delimiters, line)) & set(self._hor_param_names)):
-                    logging.debug('Horizontal parameters found')
-                    self._parse_horizontal_line(line)
+                if bool(set(self._split_header_line(line)) & set(self._hor_param_names)):
+                    logging.debug(f'Horizontal parameters found: {set(self._split_header_line(line)) & set(self._hor_param_names)}')
+                    self._parse_hor_param_line(line)
 
                 elif not prev_line: # If previous line is empty
 
